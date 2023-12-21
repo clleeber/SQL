@@ -1,0 +1,133 @@
+SELECT *
+FROM (SELECT ANI.PET_ID, ANI.PET_NAME, APL.APPLICANT_NAME, APL.APPLICANT_ID, POINTS.POINTS
+FROM ANIMAL ANI
+INNER JOIN APPLICANT APL
+ON ANI.SEX = APL.PET_SEX AND ANI.PET_SIZE = APL.PET_SIZE AND ANI.AGE=APL.PET_AGE
+AND
+ANI.IS_CHILD_SAFE = CASE
+                        WHEN APL.CHILD_PLAN = 'No' THEN 'No'
+                        WHEN APL.CHILD_PLAN = 'Between 1 and 2 years' THEN 'Yes'
+                        WHEN APL.CHILD_PLAN = 'In the next year' THEN 'Yes'
+                        WHEN APL.CHILD_PLAN = 'In 5 years or more' THEN 'No'
+                    END 
+AND ANI.IS_CHILD_SAFE = CASE
+                        WHEN APL.HOUSE_CHILDREN = '0' THEN 'No'
+                        WHEN APL.HOUSE_CHILDREN = '1' THEN 'Yes'
+                        WHEN APL.HOUSE_CHILDREN = '2' THEN 'Yes'
+                        WHEN APL.HOUSE_CHILDREN = '3 or more' THEN 'Yes'
+                    END 
+AND ANI.IS_CHILD_SAFE = CASE
+                        WHEN APL.HAS_CHILDREN_VISITING = 'Yes' THEN 'Yes'
+                        WHEN APL.HAS_CHILDREN_VISITING = 'No' THEN 'No'
+                    END 
+AND ANI.IS_HOUSE_TRAINED = CASE
+                        WHEN APL.DEMANDS_HOUSE_TRAINED = 'House Trained only' THEN 'Yes'
+                        WHEN APL.DEMANDS_HOUSE_TRAINED = 'Training is not a must' THEN 'No'
+                    END 
+AND ANI.BEHAVIOUR = CASE
+                        WHEN APL.HAS_EXPERIENCE = 'Yes' THEN 'Experienced'
+                        WHEN APL.HAS_EXPERIENCE = 'No' THEN 'Any'
+                    END
+
+LEFT JOIN (SELECT CP.APPLICANT_ID, sum(CP.CHILD_PLAN_POINTS + HG.HAS_GARDEN_POINTS + HC.HOUSE_CHILDREN_POINTS + IGF.IS_GARDEN_FENCED_POINTS + HE.HAS_EXPERIENCE_POINTS +
+MHA.MAX_HOURS_ALONE_POINTS + PPA.PET_PLACE_ALONE_POINTS + HGA.HAS_GARDEN_ACCESS_POINTS + WS.WALK_SCHEDULE_POINTS + WWS.WEATHER_WALK_SCHEDULE_POINTS + EMPLOYMENT_STATUS_POINTS) AS POINTS
+FROM (SELECT APPLICANT_ID,
+            CASE
+                WHEN CHILD_PLAN = 'No' THEN '5'
+                WHEN CHILD_PLAN = 'In the next year' THEN '0'
+                WHEN CHILD_PLAN = 'Between 1 and 2 years' THEN '2'
+                ELSE '5'
+            END AS CHILD_PLAN_POINTS
+        FROM APPLICANT) CP 
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN HAS_GARDEN = 'No garden' THEN '0'
+                        WHEN HAS_GARDEN = 'Small (less than 15m2)' THEN '1'
+                        WHEN HAS_GARDEN = 'Medium (between 15 and 60m2)' THEN '2'
+                        WHEN HAS_GARDEN = 'Large (larger than 60m2)' THEN '3'
+                        ELSE '0'
+                    END AS HAS_GARDEN_POINTS
+FROM APPLICANT)HG
+ON CP.APPLICANT_ID = HG.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN HOUSE_CHILDREN = '3 or more' THEN '0'
+                        WHEN HOUSE_CHILDREN = '2' THEN '1'
+                        WHEN HOUSE_CHILDREN = '1' THEN '3'
+                        ELSE '5'
+                    END AS HOUSE_CHILDREN_POINTS
+FROM APPLICANT)HC
+ON CP.APPLICANT_ID = HC.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN IS_GARDEN_FENCED = 'Without fences' THEN '0'
+                        WHEN IS_GARDEN_FENCED = 'Lower than 6ft' THEN '0'
+                        ELSE '1'
+                    END AS IS_GARDEN_FENCED_POINTS
+FROM APPLICANT)IGF
+ON CP.APPLICANT_ID = IGF.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN HAS_EXPERIENCE = 'No' THEN '0'
+                        ELSE '3'
+                    END AS HAS_EXPERIENCE_POINTS
+FROM APPLICANT)HE
+ON CP.APPLICANT_ID = HE.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN MAX_HOURS_ALONE = 'Less than 2' THEN '6'
+                        WHEN MAX_HOURS_ALONE = '2-4' THEN '5'
+                        WHEN MAX_HOURS_ALONE = '4-6' THEN '4'
+                        WHEN MAX_HOURS_ALONE = '6-8' THEN '1'
+                        ELSE '0'
+                    END AS MAX_HOURS_ALONE_POINTS
+FROM APPLICANT)MHA
+ON CP.APPLICANT_ID = MHA.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN PET_PLACE_ALONE = 'In the garden' THEN '0'
+                        WHEN PET_PLACE_ALONE = 'Other' THEN '0'
+                        WHEN PET_PLACE_ALONE = 'Family/Friend' THEN '2'
+                        WHEN PET_PLACE_ALONE = 'Dog Day Care' THEN '2'
+                        ELSE '1'
+                    END AS PET_PLACE_ALONE_POINTS
+FROM APPLICANT)PPA
+ON CP.APPLICANT_ID = PPA.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN HAS_GARDEN_ACCESS = 'Yes' THEN '3'
+                        ELSE '0'
+                    END AS HAS_GARDEN_ACCESS_POINTS
+FROM APPLICANT)HGA
+ON CP.APPLICANT_ID = HGA.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN WALK_SCHEDULE = 'Twice a day' THEN '5'
+                        WHEN WALK_SCHEDULE = 'Once a day' THEN '2'
+                        WHEN WALK_SCHEDULE = 'Every other day' THEN '1'
+                        ELSE '0'
+                    END AS WALK_SCHEDULE_POINTS
+FROM APPLICANT)WS
+ON CP.APPLICANT_ID = WS.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN WEATHER_WALK_SCHEDULE = 'No' THEN '5'
+                        ELSE '0'
+                    END AS WEATHER_WALK_SCHEDULE_POINTS
+FROM APPLICANT)WWS
+ON CP.APPLICANT_ID = WWS.APPLICANT_ID
+INNER JOIN (SELECT APPLICANT_ID,
+                    CASE
+                        WHEN EMPLOYMENT_STATUS = 'Full-time' THEN '1'
+                        WHEN EMPLOYMENT_STATUS = 'Part-time' THEN '2'
+                        WHEN EMPLOYMENT_STATUS = 'Student' THEN '2'
+                        WHEN EMPLOYMENT_STATUS = 'Work from home' THEN '3'
+                        WHEN EMPLOYMENT_STATUS = 'Unemployed' THEN '0'
+                        ELSE '5'
+                    END AS EMPLOYMENT_STATUS_POINTS
+FROM APPLICANT)ES
+ON CP.APPLICANT_ID = ES.APPLICANT_ID
+GROUP BY CP.APPLICANT_ID) POINTS ON POINTS.APPLICANT_ID = APL.APPLICANT_ID
+WHERE ANI.PET_ID = 101 
+ORDER BY POINTS.POINTS DESC, APL.CREATED DESC) TOP10
+WHERE ROWNUM <=5
